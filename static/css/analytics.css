@@ -434,25 +434,6 @@
   transition: width 0.7s ease;
 }
 
-/* ── Heatmap / Activity ── */
-.an-heatmap-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-.an-heatmap-cell {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  background: #f0f4f9;
-  cursor: default;
-  transition: transform 0.1s;
-  position: relative;
-}
-.an-heatmap-cell:hover { transform: scale(1.2); z-index: 1; }
-.an-heatmap-cell[data-level="1"] { background: #bbdefb; }
-.an-heatmap-cell[data-level="2"] { background: #64b5f6; }
-.an-heatmap-cell[data-level="3"] { background: #1565c0; }
-.an-heatmap-cell[data-level="4"] { background: #0d47a1; }
 
 /* ── No Data State ── */
 .an-empty {

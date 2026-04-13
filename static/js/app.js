@@ -282,7 +282,7 @@ function _openClarModal(questions, input, role, taskType) {
         class="clar-answer-input"
         id="clar-ans-${i}"
         type="text"
-        placeholder="Your answer…"
+        placeholder="Your answer… (leave blank to skip)"
         autocomplete="off"
         maxlength="120"
       />
@@ -315,6 +315,12 @@ async function _handleClarSubmit() {
 
   _closeClarModal();
 
+  const hasAnyAnswer = answers.some(a => a.length > 0);
+  if (!hasAnyAnswer) {
+    _runGenerate(_clarInput, _clarRole, _clarTaskType);
+    return;
+  }
+
   try {
     const mergeRes = await fetch(API.clarifyMerge, {
       method:  'POST',
@@ -338,22 +344,49 @@ async function _handleClarSubmit() {
 
 function _handleClarSkip() {
   _closeClarModal();
-  _runGenerate(_clarInput, _clarRole, _clarTaskType);
 }
 
 /* ── Enriched suggestion modal shown after clarification answers ── */
 function _showEnrichedSuggestion(enriched, role, taskType) {
-  const overlay = document.getElementById('enrichedOverlay');
+  const overlay   = document.getElementById('enrichedOverlay');
   const textarea  = document.getElementById('userInput');
   const charCount = document.getElementById('charCount');
+  const descDisplay = document.getElementById('enrichedDescDisplay');
+  const descTextarea = document.getElementById('enrichedDescText');
+  const editBtn   = document.getElementById('enrichedEditBtn');
 
-  document.getElementById('enrichedDescText').value   = enriched;
+  descDisplay.textContent = enriched;
+  descDisplay.style.display = '';
+  descTextarea.value = enriched;
+  descTextarea.style.display = 'none';
+  editBtn.innerHTML = '&#9998; Edit';
+
   document.getElementById('enrichedOrigText').textContent = _clarInput;
+
+  editBtn.onclick = () => {
+    const isEditing = descTextarea.style.display !== 'none';
+    if (isEditing) {
+      const updated = descTextarea.value.trim() || enriched;
+      descDisplay.textContent = updated;
+      descDisplay.style.display = '';
+      descTextarea.style.display = 'none';
+      editBtn.innerHTML = '&#9998; Edit';
+    } else {
+      descTextarea.value = descDisplay.textContent;
+      descDisplay.style.display = 'none';
+      descTextarea.style.display = '';
+      descTextarea.focus();
+      editBtn.innerHTML = '&#10003; Done';
+    }
+  };
 
   overlay.classList.add('open');
 
   document.getElementById('enrichedBannerUse').onclick = () => {
-    const finalText = document.getElementById('enrichedDescText').value.trim() || enriched;
+    const finalText = (descTextarea.style.display !== 'none'
+      ? descTextarea.value
+      : descDisplay.textContent
+    ).trim() || enriched;
     overlay.classList.remove('open');
     textarea.value = finalText;
     if (charCount) charCount.textContent = finalText.length;
@@ -552,9 +585,6 @@ function renderResult(data) {
   // ── Tool recommendation box ──
   const toolBox = document.getElementById('toolRecBox');
   if (data.recommended_tool && !data.policy_blocked) {
-    const internalBadge = data.tool_is_internal
-      ? `<span class="tool-badge-internal">🏢 Internal Tool</span>`
-      : `<span class="tool-badge-external">🌐 External Tool</span>`;
     toolBox.innerHTML = `
       <div class="tool-rec-box">
         <div class="tool-rec-header">
@@ -563,7 +593,7 @@ function renderResult(data) {
             <div class="tool-rec-name">${escapeHtml(data.recommended_tool)}</div>
             <div class="tool-rec-category">${escapeHtml(data.tool_category || '')}</div>
           </div>
-          <div class="tool-rec-badges" id="toolRecBadges">${internalBadge}</div>
+          <div class="tool-rec-badges" id="toolRecBadges"></div>
         </div>
         <div class="tool-rec-reason">${escapeHtml(data.tool_reason || '')}</div>
 
@@ -683,15 +713,6 @@ function renderResult(data) {
         if (info) {
           card.querySelector('.alt-card-icon').textContent = info.icon || '🤖';
           card.querySelector('.alt-card-cat').textContent  = info.category || '';
-
-          // Internal/external badge
-          const existingBadge = card.querySelector('.alt-internal-badge');
-          if (!existingBadge) {
-            const badge = document.createElement('span');
-            badge.className   = info.is_internal ? 'alt-internal-badge tool-badge-internal' : 'alt-internal-badge tool-badge-external';
-            badge.textContent = info.is_internal ? '🏢 Internal' : '🌐 External';
-            card.querySelector('.alt-card-body').prepend(badge);
-          }
 
           // Prompt-required badge — injected into alt-card-right, above the % and Open button
           const rawPrompt = (info.raw_data?.is_prompt_required ?? info.is_prompt_required ?? '');
@@ -1084,9 +1105,7 @@ async function loadTools() {
             <div class="tool-name">${escapeHtml(name)}</div>
             <div class="tool-category">${escapeHtml(info.category)}</div>
           </div>
-          ${info.is_internal
-            ? `<span class="tool-badge-internal" style="margin-left:auto">🏢 Internal</span>`
-            : `<span class="tool-badge-external" style="margin-left:auto">🌐 External</span>`}
+
         </div>
         <p class="tool-desc">${escapeHtml(info.description)}</p>
         <div class="tool-tags">

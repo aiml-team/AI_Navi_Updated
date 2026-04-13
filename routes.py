@@ -99,6 +99,8 @@ async def run_orchestrator(req: RunRequest):
     is_blocked     = result.get("policy_blocked", False)
     policy_summary = result.get("policy_summary", "")
 
+    stored_role = (req.role or "").strip() or "general"
+
     conn = get_db()
     conn.execute(
         """INSERT INTO audit_log
@@ -106,8 +108,8 @@ async def run_orchestrator(req: RunRequest):
              recommended_tool, tool_reason, tool_confidence,
              policy_flags, retrieved_policies, final_prompt,
              prompt_version, model_used, output, token_estimate,
-             system_version, policy_blocked, policy_summary)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+             system_version, policy_blocked, policy_summary, role)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             audit_id, datetime.utcnow().isoformat(),
             result["user_input"], result["intent"], result["industry"],
@@ -119,6 +121,7 @@ async def run_orchestrator(req: RunRequest):
             result["token_estimate"], SYSTEM_VERSION,
             1 if is_blocked else 0,
             policy_summary,
+            stored_role,
         ),
     )
     conn.commit()
@@ -503,13 +506,10 @@ async def get_analytics_dashboard(period: str = "day", role: str = "all"):
 
     # Only filter by role if the dedicated role column exists.
     # Never use raw_input as a role fallback — it contains full task descriptions.
-    has_role_col = _has_column(conn, "audit_log", "role")
-    role_col     = "role" if has_role_col else None
-
     # Build role filter clause safely using parameterized queries
     role_filter_sql  = ""
     role_filter_args = []
-    if role != "all" and role.strip() and has_role_col:
+    if role != "all" and role.strip():
         role_filter_sql  = " AND LOWER(role) LIKE ?"
         role_filter_args = [f"%{role.lower()}%"]
 
@@ -532,23 +532,16 @@ async def get_analytics_dashboard(period: str = "day", role: str = "all"):
         change_pct = round((total - prev_total) / prev_total * 100)
 
     # ── By role ───────────────────────────────────────────────────────────────
-    # Only use dedicated role column — never fall back to raw_input (full task text)
-    # Also exclude blank, null, and "general" placeholder values
-    if _has_column(conn, "audit_log", "role"):
-        _role_filter_extra = role_filter_sql.replace(f"LOWER({role_col})", "LOWER(role)") if role_filter_sql else ""
-        by_role_rows = conn.execute(
-            "SELECT role, COUNT(*) as count "
-            "FROM audit_log "
-            "WHERE created_at >= ? "
-            "  AND role IS NOT NULL AND TRIM(role) != '' "
-            "  AND LOWER(TRIM(role)) != 'general'"
-            + _role_filter_extra +
-            " GROUP BY role ORDER BY count DESC LIMIT 15",
-            base_args
-        ).fetchall()
-        by_role = [{"role": r["role"].strip(), "count": r["count"]} for r in by_role_rows]
-    else:
-        by_role = []
+    by_role_rows = conn.execute(
+        "SELECT role, COUNT(*) as count "
+        "FROM audit_log "
+        "WHERE created_at >= ? "
+        "  AND role IS NOT NULL AND TRIM(role) != '' "
+        + role_filter_sql +
+        " GROUP BY role ORDER BY count DESC LIMIT 15",
+        base_args
+    ).fetchall()
+    by_role = [{"role": r["role"].strip().title() if r["role"].strip().lower() == "general" else r["role"].strip(), "count": r["count"]} for r in by_role_rows]
 
     # ── By intent ─────────────────────────────────────────────────────────────
     by_intent_rows = conn.execute(
@@ -580,19 +573,11 @@ async def get_analytics_dashboard(period: str = "day", role: str = "all"):
 
     # ── Blocked runs ──────────────────────────────────────────────────────────
     blocked = 0
-    if _has_column(conn, "audit_log", "policy_blocked"):
-        blocked = conn.execute(
-            f"SELECT COUNT(*) as c FROM audit_log "
-            f"WHERE created_at >= ? AND policy_blocked = 1{role_filter_sql}",
-            base_args
-        ).fetchone()["c"]
-
-    # ── Avg tokens ────────────────────────────────────────────────────────────
-    avg_tok = conn.execute(
-        f"SELECT AVG(token_estimate) as a FROM audit_log WHERE created_at >= ?{role_filter_sql}",
+    blocked = conn.execute(
+        f"SELECT COUNT(*) as c FROM audit_log "
+        f"WHERE created_at >= ? AND policy_blocked = 1{role_filter_sql}",
         base_args
-    ).fetchone()["a"]
-    avg_tokens = round(avg_tok or 0)
+    ).fetchone()["c"]
 
     # ── Timeline ─────────────────────────────────────────────────────────────
     tl_rows = conn.execute(
@@ -602,15 +587,6 @@ async def get_analytics_dashboard(period: str = "day", role: str = "all"):
         base_args
     ).fetchall()
     timeline = _fill_timeline([(r["bucket"], r["count"]) for r in tl_rows], since, now, period)
-
-    # ── Hourly heatmap ────────────────────────────────────────────────────────
-    hourly_rows = conn.execute(
-        f"SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count "
-        f"FROM audit_log WHERE created_at >= ?{role_filter_sql} "
-        f"GROUP BY hour ORDER BY hour ASC",
-        base_args
-    ).fetchall()
-    hourly = [{"hour": r["hour"], "count": r["count"]} for r in hourly_rows]
 
     conn.close()
 
@@ -623,9 +599,7 @@ async def get_analytics_dashboard(period: str = "day", role: str = "all"):
         "by_intent":    by_intent,
         "by_tool":      by_tool,
         "blocked_runs": blocked,
-        "avg_tokens":   avg_tokens,
         "timeline":     timeline,
-        "hourly":       hourly,
     }
 
 

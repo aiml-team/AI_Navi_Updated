@@ -133,16 +133,12 @@
     const byTool     = d.by_tool        || [];
     const timeline   = d.timeline       || [];
     const blocked    = d.blocked_runs   || 0;
-    const avgTokens  = d.avg_tokens     || 0;
-    const topRole    = byRole[0]        || null;
 
     bodyEl.innerHTML = `
       <!-- KPI Row -->
       <div class="an-kpi-row">
         ${kpiCard('🚀', 'Total Runs', fmtNum(total), periodLabel(), '#1565c0', '#e8f0fe', trendBadge(d.change_pct))}
-        ${kpiCard('🎭', 'Active Roles', fmtNum(byRole.length), 'distinct roles used', '#7b1fa2', '#fdf4ff', '')}
         ${kpiCard('🚫', 'Blocked Runs', fmtNum(blocked), `${total ? Math.round(blocked/total*100) : 0}% of total`, '#c62828', '#fef2f2', '')}
-        ${kpiCard('⚡', 'Avg Tokens', fmtNum(Math.round(avgTokens)), 'per request', '#f57c00', '#fff8e1', '')}
       </div>
 
       <!-- Timeline + Role Donut -->
@@ -190,14 +186,6 @@
         </div>
       </div>
 
-      <!-- Hourly Heatmap (only for day/week) -->
-      ${currentPeriod !== 'month' ? `
-      <div class="an-card" style="margin-bottom:0;">
-        <div class="an-card-header">
-          <span class="an-card-title">🕐 Activity Heatmap (Hourly)</span>
-        </div>
-        <div id="anHeatmapWrap"></div>
-      </div>` : ''}
     `;
 
     /* Now populate each section */
@@ -206,7 +194,6 @@
     drawBarList('anIntentBars', byIntent, 'blue');
     drawBarList('anToolBars',   byTool,   'green');
     drawRoleTable(byRole, total);
-    if (currentPeriod !== 'month') drawHeatmap(d.hourly || []);
   }
 
   /* ── KPI card HTML ── */
@@ -369,36 +356,6 @@
           }).join('')}
         </tbody>
       </table>`;
-  }
-
-  /* ── Heatmap ── */
-  function drawHeatmap(hourly) {
-    const el = document.getElementById('anHeatmapWrap');
-    if (!el) return;
-
-    /* hourly = array of {hour: 0-23, count: N} */
-    const maxVal = Math.max(...hourly.map(h => h.count), 1);
-    const byHour = {};
-    hourly.forEach(h => byHour[h.hour] = h.count);
-
-    const hours = Array.from({length: 24}, (_, i) => i);
-    const cells = hours.map(h => {
-      const count = byHour[h] || 0;
-      const level = count === 0 ? 0 : count < maxVal * 0.25 ? 1 : count < maxVal * 0.5 ? 2 : count < maxVal * 0.75 ? 3 : 4;
-      return `<div class="an-heatmap-cell" data-level="${level}" title="${count} run${count !== 1 ? 's' : ''} at ${h}:00" style="position:relative;">
-        <div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;color:${level > 1 ? '#fff' : '#8a9bb0'};font-weight:600;">${h}</div>
-      </div>`;
-    });
-
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px;color:#8a9bb0;">
-        <span>Less</span>
-        <div style="display:flex;gap:3px;">
-          ${[0,1,2,3,4].map(l => `<div style="width:12px;height:12px;border-radius:3px;background:${['#f0f4f9','#bbdefb','#64b5f6','#1565c0','#0d47a1'][l]};"></div>`).join('')}
-        </div>
-        <span>More</span>
-      </div>
-      <div class="an-heatmap-grid">${cells.join('')}</div>`;
   }
 
   /* ── Loading / Error states ── */
