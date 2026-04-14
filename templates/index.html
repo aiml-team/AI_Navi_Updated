@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/static/css/pages.css"/>
   <link rel="stylesheet" href="/static/css/file_upload.css"/>
   <link rel="stylesheet" href="/static/css/analytics.css"/>
+  <link rel="stylesheet" href="/static/css/feedback.css"/>
 </head>
 <body>
 
@@ -25,7 +26,7 @@
   <h3>Version 1.0.0</h3>
   <a href="#" class="menu-link">📄 Release document</a>
   <a href="#" class="menu-link">📖 User manual</a>
-  <a href="#" class="menu-link">💬 Feedback form</a>
+  <a href="#" class="menu-link fb-open-form-trigger">💬 Feedback Form</a>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -63,6 +64,9 @@
             </button>
             <button class="hdr-drop-item" id="dropAnalytics">
                 <span>📊</span> Analytics Dashboard
+            </button>
+            <button class="hdr-drop-item" id="dropFeedbackView">
+                <span>💬</span> View Feedbacks
             </button>
             <button class="hdr-drop-item" id="dropFileUpload">
                 <span>📂</span> File Upload
@@ -122,7 +126,8 @@
       <button class="sidebar-item" data-page="analytics">📊 Analytics</button>
       <a href="#" class="menu-link">📄 Release document</a>
       <a href="#" class="menu-link">📖 User manual</a>
-      <a href="#" class="menu-link">💬 Feedback form</a>      
+      <a href="#" class="menu-link fb-open-form-trigger">💬 Feedback Form</a>
+      <a href="#" class="menu-link" id="sidebarFeedbackView">📋 View Feedbacks</a>
     </div>
     <!-- <div class="sidebar-section">
       <div class="sidebar-label">Quick Stats</div>
@@ -898,11 +903,81 @@
 
 </div>
 
+<!-- ══════════════════════════════════════
+     FEEDBACK FORM MODAL
+══════════════════════════════════════ -->
+<div class="fb-overlay" id="fbOverlay"></div>
+<div class="fb-form-modal" id="fbFormModal">
+  <div class="fb-form-header">
+    <div class="fb-form-header-left">
+      <div class="fb-form-header-icon">💬</div>
+      <div>
+        <div class="fb-form-header-title">Share Your Feedback</div>
+        <div class="fb-form-header-sub">Help us improve your experience</div>
+      </div>
+    </div>
+    <button class="fb-close-btn" id="fbCloseBtn" aria-label="Close">✕</button>
+  </div>
+  <div class="fb-form-body" id="fbFormBody"></div>
+  <div class="fb-success" id="fbFormSuccess">
+    <div class="fb-success-icon">🎉</div>
+    <div class="fb-success-title">Thank you for your feedback!</div>
+    <div class="fb-success-sub">Your response has been recorded and will help us improve.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     FEEDBACK VIEWER MODAL
+══════════════════════════════════════ -->
+<div class="fbv-overlay" id="fbvOverlay"></div>
+<div class="fbv-modal" id="fbvModal">
+
+  <div class="fbv-header">
+    <div class="fbv-header-left">
+      <div class="fbv-header-icon">📋</div>
+      <div>
+        <div class="fbv-header-title">Feedback Dashboard</div>
+        <div class="fbv-header-sub">All user feedback — ratings, comments &amp; issue types</div>
+      </div>
+    </div>
+    <div class="fbv-header-right">
+      <button class="fbv-close-btn" id="fbvCloseBtn" aria-label="Close">✕</button>
+    </div>
+  </div>
+
+  <div class="fbv-controls">
+    <span class="fbv-controls-label">Search</span>
+    <input class="fbv-search" id="fbvSearch" type="text" placeholder="Search email, comment…" />
+    <span class="fbv-controls-label">Rating</span>
+    <select class="fbv-rating-filter" id="fbvRatingFilter">
+      <option value="0">All Ratings</option>
+      <option value="5">5 ★ Excellent</option>
+      <option value="4">4 ★ Very Good</option>
+      <option value="3">3 ★ Good</option>
+      <option value="2">2 ★ Fair</option>
+      <option value="1">1 ★ Poor</option>
+    </select>
+    <button class="fbv-refresh-btn" id="fbvRefreshBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      Refresh
+    </button>
+  </div>
+
+  <div class="fbv-body" id="fbvBody">
+    <div class="fbv-loading">
+      <div class="fbv-spinner"></div>
+      <span>Loading feedbacks…</span>
+    </div>
+  </div>
+
+</div>
+
 <script src="/static/js/ui.js"></script>
 <script src="/static/js/app.js"></script>
 <script src="/static/js/promptlib.js"></script>
 <script src="/static/js/file_upload.js"></script>
 <script src="/static/js/analytics.js"></script>
+<script src="/static/js/feedback.js"></script>
 
 </body>
 </html>

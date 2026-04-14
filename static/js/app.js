@@ -1027,7 +1027,7 @@ async function submitFeedback(rating) {
     await fetch(API.feedback, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ audit_id: currentAuditId, rating, comment: '', issue_type: '' }),
+      body:    JSON.stringify({ audit_id: currentAuditId, rating, comment: '', issue_type: '', source: 'rl' }),
     });
     showToast(`Thanks for rating! (${rating}★)`, 'success');
     document.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('lit', i < rating));

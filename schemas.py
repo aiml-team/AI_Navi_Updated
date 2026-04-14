@@ -39,10 +39,12 @@ class RunRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    audit_id:   str
+    audit_id:   Optional[str] = ""
+    email:      Optional[str] = ""
     rating:     int
     comment:    Optional[str] = ""
     issue_type: Optional[str] = ""
+    source:     Optional[str] = "form"
 
 
 class PromptVersionRequest(BaseModel):

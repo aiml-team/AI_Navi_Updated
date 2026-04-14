@@ -295,12 +295,51 @@ async def refine_output(req: RefinementRequest):
 async def submit_feedback(req: FeedbackRequest):
     conn = get_db()
     conn.execute(
-        "INSERT INTO feedback VALUES (?,?,?,?,?,?)",
-        (str(uuid.uuid4()), req.audit_id, req.rating, req.comment, req.issue_type, datetime.utcnow().isoformat())
+        "INSERT INTO feedback (id, audit_id, email, rating, comment, issue_type, created_at, source) VALUES (?,?,?,?,?,?,?,?)",
+        (str(uuid.uuid4()), req.audit_id or "", req.email or "", req.rating, req.comment, req.issue_type, datetime.utcnow().isoformat(), req.source or "form")
     )
     conn.commit()
     conn.close()
     return {"status": "ok"}
+
+
+@router.get("/api/feedback-list")
+async def list_feedback(page: int = 1, per_page: int = 20, rating: int = 0, search: str = ""):
+    conn  = get_db()
+    offset = (page - 1) * per_page
+    filters = ["(f.source = 'form' OR f.source IS NULL)"]
+    args    = []
+    if rating > 0:
+        filters.append("f.rating = ?")
+        args.append(rating)
+    if search.strip():
+        filters.append("(f.email LIKE ? OR f.comment LIKE ? OR f.issue_type LIKE ?)")
+        s = f"%{search.strip()}%"
+        args.extend([s, s, s])
+    where = "WHERE " + " AND ".join(filters)
+    total = conn.execute(f"SELECT COUNT(*) as c FROM feedback f {where}", args).fetchone()["c"]
+    rows  = conn.execute(
+        f"""SELECT f.id, f.email, f.rating, f.comment, f.issue_type, f.created_at
+            FROM feedback f
+            {where}
+            ORDER BY f.created_at DESC
+            LIMIT ? OFFSET ?""",
+        args + [per_page, offset]
+    ).fetchall()
+    avg = conn.execute(f"SELECT AVG(f.rating) as r FROM feedback f {where}", args).fetchone()["r"]
+    dist = conn.execute(
+        f"SELECT f.rating, COUNT(*) as c FROM feedback f {where} GROUP BY f.rating ORDER BY f.rating",
+        args
+    ).fetchall()
+    conn.close()
+    return {
+        "total":    total,
+        "page":     page,
+        "per_page": per_page,
+        "avg_rating": round(avg, 1) if avg else None,
+        "distribution": [{"rating": r["rating"], "count": r["c"]} for r in dist],
+        "feedbacks": [dict(r) for r in rows],
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════

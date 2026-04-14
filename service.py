@@ -477,10 +477,12 @@ def init_db():
         CREATE TABLE IF NOT EXISTS feedback (
             id TEXT PRIMARY KEY,
             audit_id TEXT,
+            email TEXT DEFAULT '',
             rating INTEGER,
             comment TEXT,
             issue_type TEXT,
-            created_at TEXT
+            created_at TEXT,
+            source TEXT DEFAULT 'form'
         );
         CREATE TABLE IF NOT EXISTS prompt_versions (
             id TEXT PRIMARY KEY,
@@ -498,6 +500,12 @@ def init_db():
                              ("policy_summary", "TEXT DEFAULT ''")]:
         try:
             conn.execute(f"ALTER TABLE audit_log ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
+    for col, definition in [("email", "TEXT DEFAULT ''"), ("source", "TEXT DEFAULT 'form'")]:
+        try:
+            conn.execute(f"ALTER TABLE feedback ADD COLUMN {col} {definition}")
             conn.commit()
         except Exception:
             pass  # Column already exists
