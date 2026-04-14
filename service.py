@@ -852,6 +852,12 @@ def recommend_tool(state: OrchestratorState) -> OrchestratorState:
     # ── Pre-filter: only include tools whose output matches what the user needs ─
     eligible_tools = _filter_eligible_tools(state["user_input"], intent)
 
+    # ── Role-based filter: exclude tools whose roles list doesn't include the user's role ─
+    eligible_tools = {
+        name for name in eligible_tools
+        if _role_matches(user_role, AI_TOOLS_REGISTRY[name].get("roles", []))
+    }
+
     # ── Build a clean, concise profile for every eligible tool ───────────────
     all_entries = []
 
