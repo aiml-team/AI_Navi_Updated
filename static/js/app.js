@@ -667,6 +667,8 @@ function renderResult(data) {
   const altReasons  = filteredIdxs.map(i => _altReasons[i] || '');
   const altConfPcts = filteredIdxs.map(i => _altConfPcts[i]);
 
+  const ALT_VISIBLE = 2;
+
   if (alts.length > 0 && !data.policy_blocked) {
     // Skeleton cards — enriched async from registry below
     altBox.innerHTML = `
@@ -676,7 +678,7 @@ function renderResult(data) {
       </div>
       <div class="alt-cards-row" id="altCardsRow">
         ${alts.map((a, i) => `
-          <div class="alt-card" id="alt-card-${CSS.escape(a)}">
+          <div class="alt-card${i >= ALT_VISIBLE ? ' alt-card-hidden' : ''}" id="alt-card-${CSS.escape(a)}">
             <div class="alt-card-icon">🤖</div>
             <div class="alt-card-body">
               <div class="alt-card-name">${escapeHtml(a)}</div>
@@ -689,7 +691,20 @@ function renderResult(data) {
               </button>
             </div>
           </div>`).join('')}
-      </div>`;
+      </div>
+      ${alts.length > ALT_VISIBLE ? `
+      <button class="alt-see-more-btn" id="altSeeMoreBtn" onclick="(function(){
+        var hidden = document.querySelectorAll('#altCardsRow .alt-card-hidden');
+        var btn = document.getElementById('altSeeMoreBtn');
+        if(hidden.length){
+          hidden.forEach(function(c){ c.classList.remove('alt-card-hidden'); });
+          btn.textContent = 'See less ▲';
+        } else {
+          var all = document.querySelectorAll('#altCardsRow .alt-card');
+          all.forEach(function(c,i){ if(i >= ${ALT_VISIBLE}) c.classList.add('alt-card-hidden'); });
+          btn.textContent = 'See more (${alts.length - ALT_VISIBLE} more) ▼';
+        }
+      })()">See more (${alts.length - ALT_VISIBLE} more) ▼</button>` : ''}`;
 
     // Enrich cards asynchronously — fills icon, category, badge, full description, reason, confidence %
     fetch(API.tools).then(r => r.json()).then(registry => {
