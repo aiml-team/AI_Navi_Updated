@@ -408,7 +408,32 @@
         <h2 class="page-title">AI Tools Registry</h2>
         <p class="page-subtitle">All available enterprise AI tools and their capabilities.</p>
       </div>
+      <div class="tools-topbar-right">
+        <input type="search" id="toolsSearch" class="promptlib-search" placeholder="Search tools…" aria-label="Search tools">
+        <div class="tools-view-toggle">
+          <button class="tools-view-btn active" id="btnTileView" title="Tile view">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="tools-view-btn" id="btnRowView" title="Row view">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
+
+    <!-- Role tabs — mirrors scenario library style -->
+    <div class="pl-role-tabs" id="toolRoleTabs" style="margin-bottom:18px;">
+      <button class="pl-role-tab active" data-role="all">🗂 All Tools</button>
+      <button class="pl-role-tab" data-role="sales">🤝 Sales</button>
+      <button class="pl-role-tab" data-role="consulting">👔 Consulting</button>
+      <button class="pl-role-tab" data-role="hr">👥 Human Resource</button>
+      <button class="pl-role-tab" data-role="finance">💰 Finance</button>
+      <button class="pl-role-tab" data-role="marketing">📣 Marketing</button>
+      <button class="pl-role-tab" data-role="ams">🔧 AMS</button>
+      <button class="pl-role-tab" data-role="developer">💻 Developer</button>
+      <button class="pl-role-tab" data-role="operations">⚙️ Operations</button>
+    </div>
+
     <div class="tools-grid" id="toolsGrid">
       <div class="loading-spinner"><div class="spinner"></div></div>
     </div>

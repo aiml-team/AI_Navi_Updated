@@ -21,11 +21,45 @@
 }
 .history-item-actions { flex-shrink: 0; }
 
-/* ─── TOOLS GRID ─── */
+/* ─── TOOLS PAGE TOPBAR ─── */
+.tools-topbar-right {
+  display: flex; align-items: center; gap: 10px;
+}
+.tools-view-toggle {
+  display: flex; border: 1.5px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.tools-view-btn {
+  background: var(--bg-white); border: none; padding: 7px 10px;
+  cursor: pointer; color: var(--text3); display: flex; align-items: center;
+  transition: background .15s, color .15s;
+}
+.tools-view-btn:hover  { background: var(--bg-secondary); color: var(--text); }
+.tools-view-btn.active { background: var(--primary); color: #fff; }
+
+/* ─── TOOLS GRID (tile view default) ─── */
 .tools-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
   gap: 14px;
 }
+
+/* ─── TOOLS ROW VIEW ─── */
+.tools-grid.row-view {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.tools-grid.row-view .tool-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 16px;
+}
+.tools-grid.row-view .tool-card-header {
+  margin-bottom: 0; flex-shrink: 0; width: 220px;
+}
+.tools-grid.row-view .tool-desc {
+  flex: 1; margin-bottom: 0;
+}
+.tools-grid.row-view .tool-link { flex-shrink: 0; }
+
+/* ─── TOOL CARD ─── */
 .tool-card {
   background: var(--bg-white); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 16px; transition: all .2s;
@@ -36,13 +70,33 @@
 .tool-name { font-size: 14px; font-weight: 700; color: var(--text); }
 .tool-category { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-top: 1px; }
 .tool-desc { font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
-.tool-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
-.tool-tag {
-  padding: 2px 7px; border-radius: 4px;
-  background: var(--bg-secondary); border: 1px solid var(--border);
-  font-size: 10px; font-weight: 600; color: var(--text3);
+
+/* ─── VISIT BUTTON ─── */
+.tool-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 13px; border-radius: 6px;
+  background: var(--primary); color: #fff;
+  font-size: 12px; font-weight: 700;
+  text-decoration: none; transition: background .15s, transform .12s;
 }
-.tool-link { font-size: 12px; font-weight: 700; color: var(--primary); }
+.tool-link:hover { background: var(--primary-dark); transform: translateY(-1px); text-decoration: none; color: #fff; }
+
+/* ─── EXTRA TAB COLORS for tools page ─── */
+.pl-role-tab[data-role="all"]          { border-color: #cbd5e1; color: #334155; }
+.pl-role-tab[data-role="all"]:hover    { background: #f1f5f9; }
+.pl-role-tab[data-role="all"].active   { background: #334155; border-color: #334155; color: #fff; box-shadow: 0 2px 8px rgba(51,65,85,.3); opacity:1; }
+
+.pl-role-tab[data-role="consulting"]        { border-color: #C7D2FE; color: #3730A3; }
+.pl-role-tab[data-role="consulting"]:hover  { background: #EEF2FF; }
+.pl-role-tab[data-role="consulting"].active { background: #3730A3; border-color: #3730A3; color: #fff; box-shadow: 0 2px 8px rgba(55,48,163,.3); opacity:1; }
+
+.pl-role-tab[data-role="ams"]          { border-color: #a5f3fc; color: #0e7490; }
+.pl-role-tab[data-role="ams"]:hover    { background: #ecfeff; }
+.pl-role-tab[data-role="ams"].active   { background: #0e7490; border-color: #0e7490; color: #fff; box-shadow: 0 2px 8px rgba(14,116,144,.3); opacity:1; }
+
+.pl-role-tab[data-role="operations"]        { border-color: #d9f99d; color: #3f6212; }
+.pl-role-tab[data-role="operations"]:hover  { background: #f7fee7; }
+.pl-role-tab[data-role="operations"].active { background: #4d7c0f; border-color: #4d7c0f; color: #fff; box-shadow: 0 2px 8px rgba(77,124,15,.3); opacity:1; }
 
 /* ─── ANALYTICS ─── */
 .analytics-stats {

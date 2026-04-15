@@ -1106,32 +1106,105 @@ document.getElementById('btnRefreshHistory')?.addEventListener('click', loadHist
 /* ══════════════════════════════════════
    AI TOOLS PAGE
 ══════════════════════════════════════ */
+/* ── Tool role mapping ── */
+const TOOL_ROLE_MAP = {
+  sales:      ['axet.gaia','cassidy','chatgpt','microsoft copilot','loopio','hubspot','partner copilot','clay','sales research assistant'],
+  consulting: ['genai amplifier (poc)','sales research assistant','sherlock ai','strategic insights ai','axet.gaia','axet.wise','axet.talk','cassidy','chatgpt','microsoft copilot','synthesia'],
+  hr:         ['hr chatbot','axet.gaia','chatgpt','microsoft copilot','synthesia'],
+  finance:    ['icertis','axet.gaia','axet.wise','chatgpt','microsoft copilot'],
+  marketing:  ['axet.gaia','chatgpt','microsoft copilot','hubspot','jasper','synthesia'],
+  ams:        ['ams process assistant','ai ticket bot','strategic insights ai','axet.talk','genai amplifier (poc)','axet.gaia','cassidy','chatgpt','microsoft copilot'],
+  developer:  ['axet.gaia','axet.plugin','axet.oasis','axet.flows','chatgpt','microsoft copilot'],
+  operations: ['cassidy','axet.flows','axet.gaia','chatgpt','microsoft copilot','synthesia'],
+};
+
+let _toolsData    = null;
+let _toolsView    = 'tile';
+let _toolsTab     = 'all';
+let _toolsSearch  = '';
+
 async function loadTools() {
   const grid = document.getElementById('toolsGrid');
-  grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-  try {
-    const res  = await fetch(API.tools);
-    const data = await res.json();
-    grid.innerHTML = Object.entries(data).map(([name, info]) => `
-      <div class="tool-card">
-        <div class="tool-card-header">
-          <div class="tool-icon">${info.icon || '🤖'}</div>
-          <div>
-            <div class="tool-name">${escapeHtml(name)}</div>
-            <div class="tool-category">${escapeHtml(info.category)}</div>
-          </div>
-
-        </div>
-        <p class="tool-desc">${escapeHtml(info.description)}</p>
-        <div class="tool-tags">
-          ${(info.best_for || []).map(t => `<span class="tool-tag">${escapeHtml(t)}</span>`).join('')}
-        </div>
-        <a href="${escapeHtml(info.url)}" target="_blank" rel="noopener" class="tool-link">Visit →</a>
-      </div>
-    `).join('');
-  } catch (err) {
-    grid.innerHTML = `<div class="empty-state"><p>Failed to load tools: ${err.message}</p></div>`;
+  if (!_toolsData) {
+    grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    try {
+      const res   = await fetch(API.tools);
+      _toolsData  = await res.json();
+    } catch (err) {
+      grid.innerHTML = `<div class="empty-state"><p>Failed to load tools: ${err.message}</p></div>`;
+      return;
+    }
   }
+
+  /* tab filter */
+  let entries = Object.entries(_toolsData);
+  if (_toolsTab !== 'all') {
+    const allowed = TOOL_ROLE_MAP[_toolsTab] || [];
+    entries = entries.filter(([name]) => allowed.includes(name.toLowerCase()));
+  }
+
+  /* search filter */
+  if (_toolsSearch.trim()) {
+    const q = _toolsSearch.toLowerCase();
+    entries = entries.filter(([name, info]) =>
+      name.toLowerCase().includes(q) ||
+      (info.desc_content || info.description || '').toLowerCase().includes(q) ||
+      (info.category || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (!entries.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);">No tools found</div>`;
+    return;
+  }
+
+  grid.innerHTML = entries.map(([name, info]) => `
+    <div class="tool-card" data-tool-name="${escapeHtml(name.toLowerCase())}">
+      <div class="tool-card-header">
+        <div class="tool-icon">${info.icon || '🤖'}</div>
+        <div>
+          <div class="tool-name">${escapeHtml(name)}</div>
+          <div class="tool-category">${escapeHtml(info.category)}</div>
+        </div>
+      </div>
+      <p class="tool-desc">${escapeHtml(info.desc_content || info.description)}</p>
+      <a href="${escapeHtml(info.url)}" target="_blank" rel="noopener" class="tool-link">Visit →</a>
+    </div>
+  `).join('');
+}
+
+function initToolsPage() {
+  /* tab clicks */
+  document.getElementById('toolRoleTabs')?.querySelectorAll('.pl-role-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#toolRoleTabs .pl-role-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      _toolsTab = tab.dataset.role;
+      loadTools();
+    });
+  });
+
+  /* search */
+  const searchEl = document.getElementById('toolsSearch');
+  let searchTimer;
+  searchEl?.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { _toolsSearch = searchEl.value; loadTools(); }, 250);
+  });
+
+  /* view toggle */
+  document.getElementById('btnTileView')?.addEventListener('click', () => {
+    _toolsView = 'tile';
+    document.getElementById('toolsGrid')?.classList.remove('row-view');
+    document.getElementById('btnTileView')?.classList.add('active');
+    document.getElementById('btnRowView')?.classList.remove('active');
+  });
+  document.getElementById('btnRowView')?.addEventListener('click', () => {
+    _toolsView = 'row';
+    document.getElementById('toolsGrid')?.classList.add('row-view');
+    document.getElementById('btnRowView')?.classList.add('active');
+    document.getElementById('btnTileView')?.classList.remove('active');
+  });
 }
 
 

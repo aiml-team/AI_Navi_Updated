@@ -412,6 +412,7 @@ async def get_tools():
     return {
         name: {
             "description": (info.get("description") or "")[:200],
+            "desc_content": (info.get("raw_data") or {}).get("Desc_Content", ""),
             "category":    info.get("category", ""),
             "icon":        info.get("icon", ""),
             "best_for":    (info.get("best_for") or [])[:8],
