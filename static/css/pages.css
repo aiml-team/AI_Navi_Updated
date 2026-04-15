@@ -25,13 +25,32 @@
 .tools-topbar-right {
   display: flex; align-items: center; gap: 10px;
 }
+
+/* ─── TOOLS VIEW TOOLBAR (below role tabs) ─── */
+.tools-view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.tools-view-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 .tools-view-toggle {
   display: flex; border: 1.5px solid var(--border);
   border-radius: 8px; overflow: hidden;
 }
 .tools-view-btn {
-  background: var(--bg-white); border: none; padding: 7px 10px;
+  background: var(--bg-white); border: none; padding: 7px 14px;
   cursor: pointer; color: var(--text3); display: flex; align-items: center;
+  gap: 6px; font-size: 12px; font-weight: 600; font-family: var(--font);
   transition: background .15s, color .15s;
 }
 .tools-view-btn:hover  { background: var(--bg-secondary); color: var(--text); }

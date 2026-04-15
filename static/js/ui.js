@@ -28,7 +28,7 @@ function navigateTo(page) {
     t.classList.toggle('active', t.dataset.page === page));
 
   if (page === 'history')   loadHistory();
-  if (page === 'tools')   { if (typeof initToolsPage === 'function' && !window._toolsPageInited) { initToolsPage(); window._toolsPageInited = true; } loadTools(); }
+  if (page === 'tools')   { if (typeof initToolsPage === 'function') { initToolsPage(); } loadTools(); }
   if (page === 'analytics') loadAnalytics();
   if (page === 'policies')  loadPolicies();
 }

@@ -1174,37 +1174,57 @@ async function loadTools() {
 }
 
 function initToolsPage() {
-  /* tab clicks */
-  document.getElementById('toolRoleTabs')?.querySelectorAll('.pl-role-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('#toolRoleTabs .pl-role-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      _toolsTab = tab.dataset.role;
-      loadTools();
+  /* tab clicks — re-attach each time to avoid stale references */
+  const tabContainer = document.getElementById('toolRoleTabs');
+  if (tabContainer) {
+    // Remove old listeners by replacing with clone
+    const freshContainer = tabContainer.cloneNode(true);
+    tabContainer.parentNode.replaceChild(freshContainer, tabContainer);
+    freshContainer.querySelectorAll('.pl-role-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        freshContainer.querySelectorAll('.pl-role-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        _toolsTab = tab.dataset.role;
+        loadTools();
+      });
     });
-  });
+  }
 
   /* search */
   const searchEl = document.getElementById('toolsSearch');
-  let searchTimer;
-  searchEl?.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { _toolsSearch = searchEl.value; loadTools(); }, 250);
-  });
+  if (searchEl) {
+    const freshSearch = searchEl.cloneNode(true);
+    searchEl.parentNode.replaceChild(freshSearch, searchEl);
+    let searchTimer;
+    freshSearch.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { _toolsSearch = freshSearch.value; loadTools(); }, 250);
+    });
+  }
 
   /* view toggle */
-  document.getElementById('btnTileView')?.addEventListener('click', () => {
-    _toolsView = 'tile';
-    document.getElementById('toolsGrid')?.classList.remove('row-view');
-    document.getElementById('btnTileView')?.classList.add('active');
-    document.getElementById('btnRowView')?.classList.remove('active');
-  });
-  document.getElementById('btnRowView')?.addEventListener('click', () => {
-    _toolsView = 'row';
-    document.getElementById('toolsGrid')?.classList.add('row-view');
-    document.getElementById('btnRowView')?.classList.add('active');
-    document.getElementById('btnTileView')?.classList.remove('active');
-  });
+  const tileBtn = document.getElementById('btnTileView');
+  const rowBtn  = document.getElementById('btnRowView');
+  if (tileBtn) {
+    const freshTile = tileBtn.cloneNode(true);
+    tileBtn.parentNode.replaceChild(freshTile, tileBtn);
+    freshTile.addEventListener('click', () => {
+      _toolsView = 'tile';
+      document.getElementById('toolsGrid')?.classList.remove('row-view');
+      freshTile.classList.add('active');
+      document.getElementById('btnRowView')?.classList.remove('active');
+    });
+  }
+  if (rowBtn) {
+    const freshRow = rowBtn.cloneNode(true);
+    rowBtn.parentNode.replaceChild(freshRow, rowBtn);
+    freshRow.addEventListener('click', () => {
+      _toolsView = 'row';
+      document.getElementById('toolsGrid')?.classList.add('row-view');
+      freshRow.classList.add('active');
+      document.getElementById('btnTileView')?.classList.remove('active');
+    });
+  }
 }
 
 
