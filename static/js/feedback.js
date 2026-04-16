@@ -1,5 +1,6 @@
 /* ══════════════════════════════════════════════════════════════════
    feedback.js — Feedback Form Modal + Feedback Viewer Modal
+   Storage: Azure Blob Storage (metadata.json + attachments per folder)
 ══════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -19,6 +20,7 @@
   let selectedRating  = 0;
   let selectedIssue   = '';
   let currentAuditId  = '';
+  let selectedFiles   = [];
 
   function initForm() {
     formOverlay = document.getElementById('fbOverlay');
@@ -29,7 +31,6 @@
     if (!formModal) return;
 
     document.getElementById('fbCloseBtn')?.addEventListener('click', closeForm);
-    document.getElementById('fbCancelBtn')?.addEventListener('click', closeForm);
     formOverlay?.addEventListener('click', closeForm);
 
     document.addEventListener('keydown', e => {
@@ -41,6 +42,10 @@
 
   function buildFormBody() {
     if (!formBody) return;
+    selectedFiles  = [];
+    selectedRating = 0;
+    selectedIssue  = '';
+
     formBody.innerHTML = `
       <div class="fb-field">
         <label>Email Address</label>
@@ -67,14 +72,22 @@
         <textarea id="fbComment" placeholder="Tell us what you think — any detail helps…" maxlength="1000"></textarea>
       </div>
 
+      <div class="fb-field">
+        <label>Attachments <span style="color:#64748b;font-weight:400;font-size:11px;">(screenshots, logs, any files)</span></label>
+        <div class="fb-dropzone" id="fbDropzone">
+          <div class="fb-dropzone-icon">📎</div>
+          <div class="fb-dropzone-text">Drop files here or <span class="fb-dropzone-browse">browse</span></div>
+          <div class="fb-dropzone-hint">Multiple files supported · PNG, JPG, PDF, DOCX, TXT, ZIP…</div>
+          <input type="file" id="fbFileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt,.log,.zip,.xlsx,.csv" style="display:none"/>
+        </div>
+        <div class="fb-file-preview" id="fbFilePreview"></div>
+      </div>
+
       <div class="fb-submit-row">
         <button class="fb-btn-cancel" id="fbCancelBtn2">Cancel</button>
         <button class="fb-btn-submit" id="fbSubmitBtn" disabled>Submit Feedback</button>
       </div>
     `;
-
-    selectedRating = 0;
-    selectedIssue  = '';
 
     /* Stars */
     const stars = formBody.querySelectorAll('.fb-star');
@@ -104,11 +117,85 @@
       });
     });
 
-    /* Cancel inside body */
+    /* File upload — dropzone */
+    const dropzone  = formBody.querySelector('#fbDropzone');
+    const fileInput = formBody.querySelector('#fbFileInput');
+
+    dropzone.addEventListener('click', e => {
+      if (e.target === fileInput) return;
+      fileInput.click();
+    });
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      addFiles(Array.from(e.dataTransfer.files));
+    });
+
+    fileInput.addEventListener('change', () => {
+      addFiles(Array.from(fileInput.files));
+      fileInput.value = '';
+    });
+
+    /* Cancel */
     formBody.querySelector('#fbCancelBtn2')?.addEventListener('click', closeForm);
 
     /* Submit */
     formBody.querySelector('#fbSubmitBtn').addEventListener('click', submitFeedback);
+  }
+
+  function addFiles(newFiles) {
+    newFiles.forEach(f => {
+      if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) {
+        selectedFiles.push(f);
+      }
+    });
+    renderFilePreviews();
+  }
+
+  function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    renderFilePreviews();
+  }
+
+  function renderFilePreviews() {
+    const preview = formBody?.querySelector('#fbFilePreview');
+    if (!preview) return;
+    if (!selectedFiles.length) { preview.innerHTML = ''; return; }
+
+    preview.innerHTML = selectedFiles.map((f, i) => {
+      const isImage = f.type.startsWith('image/');
+      const icon    = isImage ? '🖼️' : fileIcon(f.name);
+      const size    = formatBytes(f.size);
+      return `
+        <div class="fb-file-chip" data-index="${i}">
+          <span class="fb-file-chip-icon">${icon}</span>
+          <span class="fb-file-chip-name" title="${escFb(f.name)}">${escFb(f.name)}</span>
+          <span class="fb-file-chip-size">${size}</span>
+          <button class="fb-file-chip-remove" data-idx="${i}" aria-label="Remove">✕</button>
+        </div>`;
+    }).join('');
+
+    preview.querySelectorAll('.fb-file-chip-remove').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        removeFile(+btn.dataset.idx);
+      });
+    });
+  }
+
+  function fileIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const map = { pdf: '📄', doc: '📝', docx: '📝', txt: '📃', log: '📃', zip: '🗜️', xlsx: '📊', csv: '📊' };
+    return map[ext] || '📎';
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
   function highlightStars(stars, val) {
@@ -147,19 +234,18 @@
     btn.textContent = 'Submitting…';
 
     try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audit_id:   currentAuditId,
-          email:      email,
-          rating:     selectedRating,
-          comment:    comment,
-          issue_type: selectedIssue,
-          source:     'form',
-        }),
-      });
+      const fd = new FormData();
+      fd.append('email',      email);
+      fd.append('rating',     selectedRating);
+      fd.append('comment',    comment);
+      fd.append('issue_type', selectedIssue);
+      fd.append('audit_id',   currentAuditId);
+      fd.append('source',     'form');
+      selectedFiles.forEach(f => fd.append('files', f, f.name));
+
+      const res = await fetch('/api/feedback', { method: 'POST', body: fd });
       if (!res.ok) throw new Error('Server error');
+
       formBody.style.display = 'none';
       formSuccess.classList.add('show');
       setTimeout(closeForm, 2200);
@@ -170,7 +256,10 @@
     }
   }
 
-  /* expose opener globally so other parts of the app can call it */
+  function escFb(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   window.openFeedbackForm = openForm;
 
 
@@ -207,14 +296,12 @@
       searchTimer = setTimeout(() => { vSearch = e.target.value; vPage = 1; fetchFeedbacks(); }, 350);
     });
 
-    /* open from dropdown */
     document.getElementById('dropFeedbackView')?.addEventListener('click', () => {
       const dd = document.getElementById('hdrDropdown');
       if (dd) dd.classList.remove('open');
       openViewer();
     });
 
-    /* open from sidebar */
     document.getElementById('sidebarFeedbackView')?.addEventListener('click', openViewer);
   }
 
@@ -233,6 +320,7 @@
   function closeViewer() {
     viewerOverlay?.classList.remove('open');
     viewerModal?.classList.remove('open');
+    closeAttachmentViewer();
   }
 
   async function fetchFeedbacks() {
@@ -240,10 +328,7 @@
     vLoading = true;
     showViewerLoading();
     try {
-      const params = new URLSearchParams({
-        page: vPage, per_page: vPerPage,
-        rating: vRating, search: vSearch,
-      });
+      const params = new URLSearchParams({ page: vPage, per_page: vPerPage, rating: vRating, search: vSearch });
       const res  = await fetch(`/api/feedback-list?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -274,7 +359,6 @@
     const total = data.total        || 0;
     const maxDistCount = Math.max(...dist.map(d => d.count), 1);
 
-    /* KPI row */
     const kpiHtml = `
       <div class="fbv-kpi-row">
         <div class="fbv-kpi">
@@ -299,7 +383,6 @@
         </div>
       </div>`;
 
-    /* Rating distribution */
     const distHtml = `
       <div class="fbv-dist-card">
         <div class="fbv-dist-title">Rating Distribution</div>
@@ -307,7 +390,6 @@
           const item  = dist.find(d => d.rating === r);
           const count = item ? item.count : 0;
           const pct   = Math.round(count / maxDistCount * 100);
-          const stars = '★'.repeat(r) + '☆'.repeat(5 - r);
           return `
             <div class="fbv-dist-row">
               <span class="fbv-dist-star">${r} ★</span>
@@ -317,7 +399,6 @@
         }).join('')}
       </div>`;
 
-    /* Table */
     let tableHtml;
     if (!rows.length) {
       tableHtml = `<div class="fbv-table-card"><div class="fbv-empty"><div class="fbv-empty-icon">📭</div>No feedbacks found</div></div>`;
@@ -337,6 +418,7 @@
                   <th>Email</th>
                   <th>Issue Type</th>
                   <th>Comment</th>
+                  <th>Files</th>
                   <th>Date</th>
                 </tr>
               </thead>
@@ -347,6 +429,13 @@
                     <td style="font-size:12.5px;color:#374151;">${escFbv(r.email || '—')}</td>
                     <td>${r.issue_type ? `<span class="fbv-issue-pill">${escFbv(r.issue_type)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
                     <td><div class="fbv-comment-text">${escFbv(r.comment || '—')}</div></td>
+                    <td>
+                      ${r.files && r.files.length
+                        ? `<button class="fbv-view-files-btn" data-id="${escFbv(r.id)}" data-count="${r.files.length}">
+                             📎 ${r.files.length} file${r.files.length > 1 ? 's' : ''}
+                           </button>`
+                        : '<span style="color:#d1d5db;">—</span>'}
+                    </td>
                     <td class="fbv-date-cell">${fmtDate(r.created_at)}</td>
                   </tr>`).join('')}
               </tbody>
@@ -358,13 +447,80 @@
 
     viewerBody.innerHTML = kpiHtml + distHtml + tableHtml;
 
-    /* attach pagination events */
     viewerBody.querySelectorAll('.fbv-page-btn[data-page]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        vPage = +btn.dataset.page;
-        fetchFeedbacks();
-      });
+      btn.addEventListener('click', () => { vPage = +btn.dataset.page; fetchFeedbacks(); });
     });
+
+    viewerBody.querySelectorAll('.fbv-view-files-btn').forEach(btn => {
+      btn.addEventListener('click', () => openAttachmentViewer(btn.dataset.id));
+    });
+  }
+
+  /* ── Attachment Viewer ── */
+  function openAttachmentViewer(feedbackId) {
+    let panel = document.getElementById('fbvAttachPanel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'fbvAttachPanel';
+      panel.className = 'fbv-attach-panel';
+      panel.innerHTML = `
+        <div class="fbv-attach-header">
+          <span class="fbv-attach-title">📎 Attachments</span>
+          <button class="fbv-attach-close" id="fbvAttachClose">✕</button>
+        </div>
+        <div class="fbv-attach-body" id="fbvAttachBody">
+          <div class="fbv-loading"><div class="fbv-spinner"></div><span>Loading…</span></div>
+        </div>`;
+      document.getElementById('fbvModal')?.appendChild(panel);
+      document.getElementById('fbvAttachClose')?.addEventListener('click', closeAttachmentViewer);
+    }
+    panel.classList.add('open');
+
+    fetch(`/api/feedback-attachments/${encodeURIComponent(feedbackId)}`)
+      .then(r => r.json())
+      .then(data => {
+        const body = document.getElementById('fbvAttachBody');
+        if (!body) return;
+        const files = data.files || [];
+        if (!files.length) {
+          body.innerHTML = `<div class="fbv-attach-empty">No attachments found</div>`;
+          return;
+        }
+        body.innerHTML = files.map(f => {
+          const isImage = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(f.name);
+          if (isImage) {
+            return `
+              <div class="fbv-attach-item">
+                <a href="${escFbv(f.url)}" target="_blank" rel="noopener">
+                  <img src="${escFbv(f.url)}" alt="${escFbv(f.name)}" class="fbv-attach-img" loading="lazy"/>
+                </a>
+                <div class="fbv-attach-name">${escFbv(f.name)}</div>
+              </div>`;
+          }
+          return `
+            <div class="fbv-attach-item fbv-attach-file">
+              <a href="${escFbv(f.url)}" target="_blank" rel="noopener" class="fbv-attach-dl">
+                <span class="fbv-attach-file-icon">${fileIconFromName(f.name)}</span>
+                <span class="fbv-attach-file-name">${escFbv(f.name)}</span>
+                <span class="fbv-attach-dl-arrow">↓ Download</span>
+              </a>
+            </div>`;
+        }).join('');
+      })
+      .catch(() => {
+        const body = document.getElementById('fbvAttachBody');
+        if (body) body.innerHTML = `<div class="fbv-attach-empty">Failed to load attachments</div>`;
+      });
+  }
+
+  function closeAttachmentViewer() {
+    document.getElementById('fbvAttachPanel')?.classList.remove('open');
+  }
+
+  function fileIconFromName(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    const map = { pdf: '📄', doc: '📝', docx: '📝', txt: '📃', log: '📃', zip: '🗜️', xlsx: '📊', csv: '📊' };
+    return map[ext] || '📎';
   }
 
   function renderPagination(totalPages) {
@@ -400,16 +556,14 @@
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  /* expose viewer opener globally */
   window.openFeedbackViewer = openViewer;
 
 
-  /* ── Boot both on DOMContentLoaded ── */
+  /* ── Boot ── */
   function boot() {
     initForm();
     initViewer();
 
-    /* open form from sidebar "Feedback form" link */
     document.querySelectorAll('.fb-open-form-trigger').forEach(el => {
       el.addEventListener('click', e => { e.preventDefault(); openForm(''); });
     });

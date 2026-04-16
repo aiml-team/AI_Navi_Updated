@@ -16,3 +16,4 @@ pdfplumber
 openpyxl
 tavily-python
 pandas
+azure-storage-blob
